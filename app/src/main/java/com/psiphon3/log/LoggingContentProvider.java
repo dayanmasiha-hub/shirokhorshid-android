@@ -48,6 +48,7 @@ public class LoggingContentProvider extends ContentProvider {
     private static final int DELETE_LOGS_BEFORE = 3;
     private static final int STATUS_LOG_LAST = 4;
     private static final int ALL_LOGS_BEFORE = 5;
+    private static final int DELETE_STATUS_LOGS = 6;
 
     private static final UriMatcher sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
@@ -57,6 +58,7 @@ public class LoggingContentProvider extends ContentProvider {
         sUriMatcher.addURI(AUTHORITY, "delete/#", DELETE_LOGS_BEFORE);
         sUriMatcher.addURI(AUTHORITY, "status/last", STATUS_LOG_LAST);
         sUriMatcher.addURI(AUTHORITY, "all/#", ALL_LOGS_BEFORE);
+        sUriMatcher.addURI(AUTHORITY, "status/delete", DELETE_STATUS_LOGS);
     }
 
     public static LogEntry convertRows(Cursor cursor) {
@@ -141,14 +143,19 @@ public class LoggingContentProvider extends ContentProvider {
             return 0;
         }
         int match = sUriMatcher.match(uri);
-        if (match != DELETE_LOGS_BEFORE) {
+        if (match != DELETE_LOGS_BEFORE && match != DELETE_STATUS_LOGS) {
             return 0;
         }
-        long beforeMillis = Long.parseLong(uri.getPathSegments().get(1));
         LoggingRoomDatabase db =
                 LoggingRoomDatabase.getDatabase(context.getApplicationContext());
         db.getQueryExecutor().execute(() -> {
-            int deletedRows = db.deleteLogEntriesBefore(beforeMillis);
+            int deletedRows = 0;
+            if (match == DELETE_LOGS_BEFORE) {
+                long beforeMillis = Long.parseLong(uri.getPathSegments().get(1));
+                deletedRows = db.deleteLogEntriesBefore(beforeMillis);
+            } else if (match == DELETE_STATUS_LOGS) {
+                deletedRows = db.deleteStatusLogEntries();
+            }
             if (deletedRows > 0) {
                 context.getContentResolver().notifyChange(uri, null);
             }
@@ -228,6 +235,10 @@ public class LoggingContentProvider extends ContentProvider {
 
         public int deleteLogEntriesBefore(long beforeDateMillis) {
             return logEntryDao().deleteLogsBefore(beforeDateMillis);
+        }
+
+        public int deleteStatusLogEntries() {
+            return logEntryDao().deleteStatusLogs();
         }
 
         public Cursor getLastStatusLogEntry() {

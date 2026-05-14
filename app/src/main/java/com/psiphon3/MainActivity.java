@@ -65,6 +65,7 @@ import androidx.viewpager.widget.ViewPager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.psiphon3.VpnRulesHelper;
+import com.psiphon3.log.LoggingContentProvider;
 import com.psiphon3.log.LogsMaintenanceWorker;
 import com.psiphon3.psiphonlibrary.EmbeddedValues;
 import com.psiphon3.psiphonlibrary.LocalizedActivities;
@@ -214,6 +215,7 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
         connectionWaitingNetworkIndicator = findViewById(R.id.connectionWaitingNetworkIndicator);
         ((AnimationDrawable) connectionWaitingNetworkIndicator.getBackground()).start();
         openBrowserButton = findViewById(R.id.openBrowserButton);
+        configureClearLogsButton();
         toggleButton.setOnClickListener(v ->
                 compositeDisposable.add(getTunnelServiceInteractor().tunnelStateFlowable()
                         .filter(state -> !state.isUnknown())
@@ -531,7 +533,7 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
 
     private void updateServiceStateUI(final TunnelState tunnelState) {
         if (tunnelState.isUnknown()) {
-            openBrowserButton.setEnabled(false);
+            configureClearLogsButton();
             toggleButton.setEnabled(false);
             toggleButton.setText(getText(R.string.waiting));
             connectionProgressBar.setVisibility(View.INVISIBLE);
@@ -540,25 +542,11 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
             toggleButton.setEnabled(true);
             toggleButton.setText(getText(R.string.stop));
             if (tunnelState.connectionData().isConnected()) {
-                openBrowserButton.setEnabled(true);
+                configureOpenBrowserButton(tunnelState);
                 connectionProgressBar.setVisibility(View.INVISIBLE);
                 connectionWaitingNetworkIndicator.setVisibility(View.INVISIBLE);
-
-                ArrayList<String> homePages = tunnelState.connectionData().homePages();
-                final String url;
-                if (homePages != null && homePages.size() > 0) {
-                    url = homePages.get(0);
-                } else {
-                    url = null;
-                }
-                openBrowserButton.setOnClickListener(view -> {
-                    VpnAppsUtils.AppTunneledChecker isAppTunneled =
-                            VpnAppsUtils.createAppTunneledCheckerFromTunnelState(
-                            tunnelState);
-                    displayBrowser(this, url, isAppTunneled);
-                });
             } else {
-                openBrowserButton.setEnabled(false);
+                configureClearLogsButton();
                 boolean waitingForNetwork =
                         tunnelState.connectionData().networkConnectionState() ==
                                 TunnelState.ConnectionData.NetworkConnectionState.WAITING_FOR_NETWORK;
@@ -569,10 +557,43 @@ public class MainActivity extends LocalizedActivities.AppCompatActivity {
             // Service not running
             toggleButton.setText(getText(R.string.start));
             toggleButton.setEnabled(true);
-            openBrowserButton.setEnabled(false);
+            configureClearLogsButton();
             connectionProgressBar.setVisibility(View.INVISIBLE);
             connectionWaitingNetworkIndicator.setVisibility(View.INVISIBLE);
         }
+    }
+
+    private void configureOpenBrowserButton(final TunnelState tunnelState) {
+        openBrowserButton.setText(R.string.open_browser);
+        openBrowserButton.setEnabled(true);
+
+        ArrayList<String> homePages = tunnelState.connectionData().homePages();
+        final String url;
+        if (homePages != null && homePages.size() > 0) {
+            url = homePages.get(0);
+        } else {
+            url = null;
+        }
+        openBrowserButton.setOnClickListener(view -> {
+            VpnAppsUtils.AppTunneledChecker isAppTunneled =
+                    VpnAppsUtils.createAppTunneledCheckerFromTunnelState(
+                            tunnelState);
+            displayBrowser(this, url, isAppTunneled);
+        });
+    }
+
+    private void configureClearLogsButton() {
+        openBrowserButton.setText(R.string.clear_logs);
+        openBrowserButton.setEnabled(true);
+        openBrowserButton.setOnClickListener(view -> clearStatusLogs());
+    }
+
+    private void clearStatusLogs() {
+        Uri uri = LoggingContentProvider.CONTENT_URI.buildUpon()
+                .appendPath("status")
+                .appendPath("delete")
+                .build();
+        getContentResolver().delete(uri, null, null);
     }
 
     // update NFC UI

@@ -38,6 +38,9 @@ public abstract class LogEntryDao {
     @Query("DELETE FROM log WHERE timestamp < :beforeDateMillis")
     abstract int deleteLogsBefore(long beforeDateMillis);
 
+    @Query("DELETE FROM log WHERE is_diagnostic = 0")
+    abstract int deleteStatusLogs();
+
     @Query("SELECT * FROM log WHERE is_diagnostic = 0 ORDER BY timestamp DESC LIMIT 1")
     public abstract Cursor getLastStatusLogEntry();
 
