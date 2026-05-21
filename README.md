@@ -19,3 +19,5 @@ This software is licensed under the [GNU General Public License v3.0](LICENSE) (
 ## No Warranty
 
 THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. USE AT YOUR OWN RISK. See the [LICENSE](LICENSE) file for full terms.
+
+8a28d0c62cf6c55768a5b68df993e9c5683eaab2
